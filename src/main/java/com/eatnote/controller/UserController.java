@@ -2,6 +2,9 @@ package com.eatnote.controller;
 
 import com.eatnote.common.Result;
 import com.eatnote.dataobject.UserDTO;
+import com.eatnote.service.UserService;
+import io.micrometer.common.util.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,52 +13,39 @@ import java.util.List;
 @RequestMapping("/api/v1")
 public class UserController {
 
+    @Autowired
+    private UserService userService;
+
     @GetMapping("/users")
-    public Result<List<UserDTO>> listUsers(@RequestParam String search) {
-        if (search != null && search.equals("howard")) {
-            return Result.success(List.of(
-                    new UserDTO("1", "howard", "Howard Chow", "howard@admin.com")
-                    , new UserDTO("2", "howard2", "Howard2 Chow", "howard2@admin.com")
-            ));
-        } else {
-            return Result.error("not found");
-        }
+    public Result<List<UserDTO>> listUsers(@RequestParam(required = false) String search) {
+
+        return Result.success(userService.listUsers(search));
+
+
     }
 
     @GetMapping("/users/{userId}")
     public Result<UserDTO> getUser(@PathVariable String userId) {
-        if (userId != null && userId.equals("1")) {
-            return Result.success(new UserDTO("1", "howard", "Howard Chow", "howard@admin.com"));
-        } else {
-            return Result.error("not found");
-        }
+        return Result.success(userService.getUser(userId));
     }
 
     @PutMapping("/users/{userId}")
     public Result<Void> updateUser(@PathVariable String userId, @RequestBody UserDTO userDTO) {
-        if (userId != null && userId.equals("1")) {
-            return Result.success();
-        } else {
-            return Result.error("not found");
-        }
+        userDTO.setId(userId);
+        userService.updateUser(userDTO);
+        return Result.success();
     }
 
     @DeleteMapping("/users/{userId}")
     public Result<Void> deleteUser(@PathVariable String userId) {
-        if (userId != null && userId.equals("1")) {
-            return Result.success();
-        } else {
-            return Result.error("not found");
-        }
+        userService.deleteUser(userId);
+        return Result.success();
     }
 
     @PostMapping("/users")
     public Result<Void> createUser(@RequestBody UserDTO userDTO) {
-        if (userDTO != null) {
-            return Result.success();
-        } else {
-            return Result.error("not found");
-        }
+        userService.createUser(userDTO);
+        return Result.success();
     }
 
 }
