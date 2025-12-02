@@ -4,7 +4,7 @@ import com.eatnote.dataobject.UserDTO;
 
 import java.util.List;
 
-public interface UserService {
+public interface UserManagementService {
     UserDTO createUser(UserDTO userDTO);
 
     void updateUser(UserDTO userDTO);

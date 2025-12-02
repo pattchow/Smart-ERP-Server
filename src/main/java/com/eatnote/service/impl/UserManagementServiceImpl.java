@@ -1,7 +1,8 @@
 package com.eatnote.service.impl;
 
 import com.eatnote.dataobject.UserDTO;
-import com.eatnote.service.UserService;
+import com.eatnote.exception.NotFoundException;
+import com.eatnote.service.UserManagementService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -13,7 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-public class UserServiceImpl implements UserService {
+public class UserManagementServiceImpl implements UserManagementService {
 
     private Map<String, UserDTO> userDB = new ConcurrentHashMap<String, UserDTO>();
 
@@ -30,7 +31,7 @@ public class UserServiceImpl implements UserService {
     public void updateUser(UserDTO userDTO) {
         UserDTO oldOne = getUserDB().get(userDTO.getId());
         if (oldOne == null) {
-            throw new RuntimeException("data not found");
+            throw new NotFoundException();
         } else {
             getUserDB().put(userDTO.getId(), userDTO);
         }
@@ -44,7 +45,7 @@ public class UserServiceImpl implements UserService {
             list = getUserDB().values().stream().toList();
         } else {
             list = new ArrayList<>();
-            for (UserDTO userDTO : getUserDB().values().stream().toList()) {
+            for (UserDTO userDTO : getUserDB().values()) {
                 if (userDTO.getUsername().contains(search) || userDTO.getFullName().contains(search)) {
                     list.add(userDTO);
                     continue;
