@@ -11,6 +11,8 @@ public interface UserManagementService {
 
     List<UserDTO> listUsers(String search);
 
+    List<UserDTO> listUsersByOrgId(String orgId);
+
     UserDTO getUser(String id);
 
     void deleteUser(String id);

@@ -18,3 +18,32 @@ CREATE TABLE organization (
 
 -- 3. 为 parent_id 字段创建索引，以优化查询性能
 CREATE INDEX idx_organization_parent_id ON organization (parent_id);
+
+
+DROP TABLE IF EXISTS users;
+
+-- 2. 创建 users 表
+CREATE TABLE  users (
+    -- ID 作为主键，使用 VARCHAR 存储 String 类型
+    id VARCHAR(255) PRIMARY KEY,
+    -- username 字段
+    username VARCHAR(255) NOT NULL,
+    -- full_name 字段
+    full_name VARCHAR(255) NOT NULL,
+    -- email 字段
+    email VARCHAR(255) NOT NULL,
+    -- org_id 字段，使用 VARCHAR 存储 String 类型
+    org_id VARCHAR(255),
+    -- 创建时间，使用 TIMESTAMP WITH TIME ZONE 存储时间戳
+    created_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    -- 更新时间
+    updated_time TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE UNIQUE INDEX uk_user_username ON users (username);
+
+-- 索引 2: 为 email 设置普通索引 (INDEX)
+CREATE INDEX idx_user_email ON users (email);
+
+-- 索引 3: 为 full_name 设置普通索引 (INDEX)
+CREATE INDEX idx_user_full_name ON users (full_name);
