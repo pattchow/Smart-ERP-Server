@@ -12,9 +12,11 @@ import java.util.List;
 public class UserRepositoryImpl extends ServiceImpl<UserMapper, User> implements UserRepository {
 
 
+
     @Override
     public void update(User user) {
         super.saveOrUpdate(user);
+
     }
 
     @Override

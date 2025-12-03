@@ -26,6 +26,7 @@ public class UserManagementServiceImpl implements UserManagementService {
         String id = UUID.randomUUID().toString();
         userDTO.setId(id);
 
+
         User user = userMapper.dtoToEntity(userDTO);
         user.setCreatedTime(LocalDateTime.now());
         user.setUpdatedTime(LocalDateTime.now());
