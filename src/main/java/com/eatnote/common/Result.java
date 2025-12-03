@@ -17,27 +17,27 @@ public class Result<T> implements Serializable {
     private boolean success;
 
     /**
-     * 响应状态码
+     * Response status code
      */
     private String code;
 
     /**
-     * 响应消息
+     * Response message
      */
     private String message;
 
     /**
-     * 响应数据
+     * Response data
      */
     private T data;
 
 //    /**
-//     * 响应时间戳 (ISO 8601格式)
+//     * Response timestamp (ISO 8601 format)
 //     */
 //    private String timestamp;
 //
 //    /**
-//     * 请求ID，用于链路追踪
+//     * Request ID for tracing
 //     */
 //    private String requestId;
 

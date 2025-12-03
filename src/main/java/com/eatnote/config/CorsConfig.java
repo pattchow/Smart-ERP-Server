@@ -10,12 +10,11 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                // 将.allowedOrigins替换为AI Studio访问你页面时浏览器地址栏的域名
+                // Replace .allowedOrigins with the domain from the browser address bar when accessing your page from AI Studio
                 .allowedOriginPatterns("*")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // 允许的HTTP方法
-                .allowedHeaders("*") // 允许所有请求头
-                .allowCredentials(false) // 如果请求需要凭证（如Cookie），则设置为true
-                .maxAge(3600); // 预检请求的缓存时间（秒）
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // Allowed HTTP methods
+                .allowedHeaders("*") // Allow all headers
+                .allowCredentials(false) // Set to true if the request requires credentials (such as Cookie)
+                .maxAge(3600); // Preflight request cache time (seconds)
     }
 }
-

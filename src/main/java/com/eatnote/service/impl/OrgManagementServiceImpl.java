@@ -38,10 +38,10 @@ public class OrgManagementServiceImpl implements OrgManagementService {
     }
 
     /**
-     * 默认展示org tree list
+     * Display organization tree list by default
      *
-     * @param search
-     * @return
+     * @param search search keyword
+     * @return organization tree list
      */
     @Override
     public List<OrgDTO> listOrgs(String search) {
