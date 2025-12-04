@@ -9,7 +9,7 @@ import lombok.experimental.Accessors;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
-@TableName("users")
+@TableName("t_users")
 public class User extends BaseEntity {
     @TableField("username")
     private String username;
