@@ -132,23 +132,30 @@ public class LlmServiceImpl implements LlmService {
             EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
             List<EmbeddingMatch<TextSegment>> relevantEmbeddings = searchResult.matches();
 
-            // 6. Build context
-            StringBuilder contextBuilder = new StringBuilder();
-            for (EmbeddingMatch<TextSegment> embeddingMatch : relevantEmbeddings) {
-                contextBuilder.append(embeddingMatch.embedded().text()).append("\n\n");
+            String answer;
+            // Check if we have relevant embeddings from the knowledge base
+            if (!relevantEmbeddings.isEmpty()) {
+                // 6. Build context from knowledge base
+                StringBuilder contextBuilder = new StringBuilder();
+                for (EmbeddingMatch<TextSegment> embeddingMatch : relevantEmbeddings) {
+                    contextBuilder.append(embeddingMatch.embedded().text()).append("\n\n");
+                }
+                String context = contextBuilder.toString();
+
+                // 7. Construct prompt with context
+                String prompt = String.format(
+                        "请根据以下上下文回答问题。如果上下文中没有相关信息，也请尽力根据你的知识回答问题，同时指出这是基于你自己的知识而非提供的材料。\n\n" +
+                        "上下文:\n%s\n\n" +
+                        "问题: %s\n\n" +
+                        "答案:", context, question);
+
+                // 8. Call the large language model to generate an answer
+                answer = chatModel.chat(prompt);
+            } else {
+                // No relevant context found, ask the model directly
+                String prompt = String.format("请回答以下问题: %s", question);
+                answer = chatModel.chat(prompt);
             }
-            String context = contextBuilder.toString();
-
-            // 7. Construct prompt
-            String prompt = String.format(
-                    "Please answer the question based on the following context. " +
-                    "If there is no relevant information in the context, please state that you cannot answer the question based on the provided materials.\n\n" +
-                    "Context:\n%s\n\n" +
-                    "Question: %s\n\n" +
-                    "Answer:", context, question);
-
-            // 8. Call the large language model to generate an answer
-            String answer = chatModel.chat(prompt);
 
             logger.info("Question answered successfully");
             return answer;
@@ -160,59 +167,85 @@ public class LlmServiceImpl implements LlmService {
     
     @Override
     public void answerQuestionStream(String question, Object responseHandler) {
+        StreamingChatResponseHandler handler = (StreamingChatResponseHandler) responseHandler;
+        
         try {
-            // 1. Initialize embedding model (Ollama)
+            // 发送开始处理信号
+            handler.onPartialResponse("[THINKING] 开始处理问题...\n");
+            
+            // 1. 初始化嵌入模型 (Ollama)
+            handler.onPartialResponse("[THINKING] 正在初始化嵌入模型...\n");
             EmbeddingModel embeddingModel = OllamaEmbeddingModel.builder()
                     .baseUrl(System.getenv().getOrDefault("OLLAMA_BASE_URL", "http://localhost:11434"))
                     .modelName(System.getenv().getOrDefault("EMBEDDING_MODEL_NAME", "nomic-embed-text"))
                     .build();
+            handler.onPartialResponse("[THINKING] 嵌入模型初始化完成\n");
 
-            // 2. Create vector storage (Milvus)
+            // 2. 创建向量存储 (Milvus)
+            handler.onPartialResponse("[THINKING] 正在连接向量数据库...\n");
             EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
                     .host(System.getenv().getOrDefault("MILVUS_HOST", "localhost"))
                     .port(Integer.parseInt(System.getenv().getOrDefault("MILVUS_PORT", "19530")))
                     .collectionName(System.getenv().getOrDefault("COLLECTION_NAME", "private_knowledge_base"))
                     .dimension(embeddingModel.embed("test").content().dimension()) // Get embedding model dimension
                     .build();
+            handler.onPartialResponse("[THINKING] 向量数据库连接成功\n");
 
-            // 3. Initialize streaming chat model
+            // 3. 初始化流式聊天模型
+            handler.onPartialResponse("[THINKING] 正在初始化语言模型...\n");
             StreamingChatModel streamingChatModel = OllamaStreamingChatModel.builder()
                     .baseUrl(System.getenv().getOrDefault("OLLAMA_BASE_URL", "http://localhost:11434"))
                     .modelName(System.getenv().getOrDefault("CHAT_MODEL_NAME", "qwen3:8b"))
                     .timeout(Duration.ofMinutes(10))
                     .build();
+            handler.onPartialResponse("[THINKING] 语言模型初始化完成\n");
 
-            // 4. Vectorize the question
+            // 4. 向量化问题
+            handler.onPartialResponse("[THINKING] 正在对问题进行向量化处理...\n");
             Embedding questionEmbedding = embeddingModel.embed(question).content();
+            handler.onPartialResponse("[THINKING] 问题向量化完成\n");
 
-            // 5. Search for similar content in the vector database
+            // 5. 在向量数据库中搜索相似内容
+            handler.onPartialResponse("[THINKING] 正在知识库中搜索相关信息...\n");
             EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                     .queryEmbedding(questionEmbedding)
                     .maxResults(3)
                     .build();
             EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
             List<EmbeddingMatch<TextSegment>> relevantEmbeddings = searchResult.matches();
+            handler.onPartialResponse("[THINKING] 找到 " + relevantEmbeddings.size() + " 条相关资料\n");
 
-            // 6. Build context
-            StringBuilder contextBuilder = new StringBuilder();
-            for (EmbeddingMatch<TextSegment> embeddingMatch : relevantEmbeddings) {
-                contextBuilder.append(embeddingMatch.embedded().text()).append("\n\n");
+            String prompt;
+            // Check if we have relevant embeddings from the knowledge base
+            if (!relevantEmbeddings.isEmpty()) {
+                // 6. 构建上下文
+                handler.onPartialResponse("[THINKING] 正在构建回答上下文...\n");
+                StringBuilder contextBuilder = new StringBuilder();
+                for (EmbeddingMatch<TextSegment> embeddingMatch : relevantEmbeddings) {
+                    contextBuilder.append(embeddingMatch.embedded().text()).append("\n\n");
+                }
+                String context = contextBuilder.toString();
+
+                // 7. 构造提示词
+                handler.onPartialResponse("[THINKING] 正在构造提示词模板...\n");
+                prompt = String.format(
+                        "请根据以下上下文回答问题。如果上下文中没有相关信息，也请尽力根据你的知识回答问题，同时指出这是基于你自己的知识而非提供的材料。\n\n" +
+                        "上下文:\n%s\n\n" +
+                        "问题: %s\n\n" +
+                        "答案:", context, question);
+            } else {
+                // No relevant context found, ask the model directly
+                handler.onPartialResponse("[THINKING] 未找到相关资料，直接向语言模型提问...\n");
+                prompt = String.format("请回答以下问题: %s", question);
             }
-            String context = contextBuilder.toString();
 
-            // 7. Construct prompt
-            String prompt = String.format(
-                    "Please answer the question based on the following context. " +
-                    "If there is no relevant information in the context, please state that you cannot answer the question based on the provided materials.\n\n" +
-                    "Context:\n%s\n\n" +
-                    "Question: %s\n\n" +
-                    "Answer:", context, question);
-
-            // 8. Call the large language model to generate an answer in streaming mode
-            streamingChatModel.chat(prompt, (StreamingChatResponseHandler) responseHandler);
+            // 8. 调用大语言模型生成流式回答
+            handler.onPartialResponse("[THINKING] 正在调用大语言模型生成答案...\n");
+            streamingChatModel.chat(prompt, handler);
 
             logger.info("Question answered successfully in streaming mode");
         } catch (Exception e) {
+            handler.onError(e);
             logger.error("Error occurred while answering question in streaming mode: ", e);
             throw new RuntimeException("Failed to answer question in streaming mode", e);
         }
