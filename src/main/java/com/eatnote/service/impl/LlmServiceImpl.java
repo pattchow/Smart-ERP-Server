@@ -2,27 +2,25 @@ package com.eatnote.service.impl;
 
 import com.eatnote.service.LlmService;
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
+import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
-import dev.langchain4j.model.ollama.OllamaChatModel;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore;
-import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
+import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
-import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.PartialResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Paths;
@@ -30,9 +28,9 @@ import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class LlmServiceImpl implements LlmService {
-    private static final Logger logger = LoggerFactory.getLogger(LlmServiceImpl.class);
 
     @Override
     public void testEmbeddingModel() {
@@ -47,13 +45,13 @@ public class LlmServiceImpl implements LlmService {
             String testText = "This is a test sentence for embedding generation.";
             Embedding embedding = embeddingModel.embed(testText).content();
 
-            logger.info("Embedding model test successful:");
-            logger.info("- Model: {}", System.getenv().getOrDefault("EMBEDDING_MODEL_NAME", "nomic-embed-text:latest"));
-            logger.info("- Embedding dimension: {}", embedding.dimension());
-            logger.info("- Embedding vector length: {}", embedding.vector().length);
+            log.info("Embedding model test successful:");
+            log.info("- Model: {}", System.getenv().getOrDefault("EMBEDDING_MODEL_NAME", "nomic-embed-text:latest"));
+            log.info("- Embedding dimension: {}", embedding.dimension());
+            log.info("- Embedding vector length: {}", embedding.vector().length);
 
         } catch (Exception e) {
-            logger.error("Embedding model test failed: ", e);
+            log.error("Embedding model test failed: ", e);
             throw new RuntimeException("Failed to test embedding model", e);
         }
     }
@@ -90,9 +88,9 @@ public class LlmServiceImpl implements LlmService {
             List<Embedding> embeddings = embeddingModel.embedAll(documentChunks).content();
             embeddingStore.addAll(embeddings, documentChunks);
 
-            logger.info("Data ingestion completed successfully, processed {} documents with {} chunks", documents.size(), documentChunks.size());
+            log.info("Data ingestion completed successfully, processed {} documents with {} chunks", documents.size(), documentChunks.size());
         } catch (Exception e) {
-            logger.error("Error occurred during data ingestion: ", e);
+            log.error("Error occurred during data ingestion: ", e);
             throw new RuntimeException("Failed to ingest data", e);
         }
     }
@@ -145,9 +143,9 @@ public class LlmServiceImpl implements LlmService {
                 // 7. Construct prompt with context
                 String prompt = String.format(
                         "请根据以下上下文回答问题。如果上下文中没有相关信息，也请尽力根据你的知识回答问题，同时指出这是基于你自己的知识而非提供的材料。\n\n" +
-                        "上下文:\n%s\n\n" +
-                        "问题: %s\n\n" +
-                        "答案:", context, question);
+                                "上下文:\n%s\n\n" +
+                                "问题: %s\n\n" +
+                                "答案:", context, question);
 
                 // 8. Call the large language model to generate an answer
                 answer = chatModel.chat(prompt);
@@ -157,22 +155,22 @@ public class LlmServiceImpl implements LlmService {
                 answer = chatModel.chat(prompt);
             }
 
-            logger.info("Question answered successfully");
+            log.info("Question answered successfully");
             return answer;
         } catch (Exception e) {
-            logger.error("Error occurred while answering question: ", e);
+            log.error("Error occurred while answering question: ", e);
             throw new RuntimeException("Failed to answer question", e);
         }
     }
-    
+
     @Override
     public void answerQuestionStream(String question, Object responseHandler) {
         StreamingChatResponseHandler handler = (StreamingChatResponseHandler) responseHandler;
-        
+
         try {
             // 发送开始处理信号
             handler.onPartialResponse("[THINKING] 开始处理问题...\n");
-            
+
             // 1. 初始化嵌入模型 (Ollama)
             handler.onPartialResponse("[THINKING] 正在初始化嵌入模型...\n");
             EmbeddingModel embeddingModel = OllamaEmbeddingModel.builder()
@@ -230,9 +228,9 @@ public class LlmServiceImpl implements LlmService {
                 handler.onPartialResponse("[THINKING] 正在构造提示词模板...\n");
                 prompt = String.format(
                         "请根据以下上下文回答问题。如果上下文中没有相关信息，也请尽力根据你的知识回答问题，同时指出这是基于你自己的知识而非提供的材料。\n\n" +
-                        "上下文:\n%s\n\n" +
-                        "问题: %s\n\n" +
-                        "答案:", context, question);
+                                "上下文:\n%s\n\n" +
+                                "问题: %s\n\n" +
+                                "答案:", context, question);
             } else {
                 // No relevant context found, ask the model directly
                 handler.onPartialResponse("[THINKING] 未找到相关资料，直接向语言模型提问...\n");
@@ -243,10 +241,10 @@ public class LlmServiceImpl implements LlmService {
             handler.onPartialResponse("[THINKING] 正在调用大语言模型生成答案...\n");
             streamingChatModel.chat(prompt, handler);
 
-            logger.info("Question answered successfully in streaming mode");
+            log.info("Question answered successfully in streaming mode");
         } catch (Exception e) {
             handler.onError(e);
-            logger.error("Error occurred while answering question in streaming mode: ", e);
+            log.error("Error occurred while answering question in streaming mode: ", e);
             throw new RuntimeException("Failed to answer question in streaming mode", e);
         }
     }
